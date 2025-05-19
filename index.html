@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <title>1회용 이미지 암호화기</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
+  <style>
+    body {
+      font-family: sans-serif;
+      max-width: 600px;
+      margin: 2rem auto;
+      background: #f5f5f5;
+      padding: 2rem;
+    }
+    input, button, textarea {
+      width: 100%;
+      margin: 0.5rem 0;
+      padding: 0.5rem;
+    }
+    img {
+      max-width: 100%;
+      margin-top: 1rem;
+      display: block;
+    }
+    .section {
+      margin-bottom: 2rem;
+    }
+    #idCopyBtn {
+      background-color: #666;
+      color: #fff;
+      border: none;
+      padding: 0.5rem;
+      margin-top: 0.5rem;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+
+  <h2>🔐 1회용 이미지 암호화기</h2>
+
+  <div class="section">
+    <h3>① 이미지 업로드 & 암호화</h3>
+    <input type="file" accept="image/*" id="imgInput">
+    <input type="password" id="key" placeholder="암호키 입력" value="3">
+    <button onclick="encryptImage()">암호화 & ID 생성</button>
+    <div id="generatedIdBox" style="display:none;">
+      <p>🔑 암호 ID: <span id="generatedId" style="font-weight:bold;"></span></p>
+      <button id="idCopyBtn" onclick="copyId()">암호ID 복사</button>
+    </div>
+  </div>
+
+  <hr>
+
+  <div class="section">
+    <h3>② ID로 복호화</h3>
+    <input type="text" id="idInput" placeholder="암호화된 ID 입력">
+    <input type="password" id="decryptKey" placeholder="암호키 입력" value="3">
+    <button onclick="decryptImage()">복호화 & 이미지 보기</button>
+    <div id="imagePreview"></div>
+  </div>
+
+  <script>
+    function generateId(length = 8) {
+      return Math.random().toString(36).substr(2, length);
+    }
+
+    function encryptImage() {
+      const file = document.getElementById('imgInput').files[0];
+      const key = document.getElementById('key').value.trim();
+      const idBox = document.getElementById('generatedIdBox');
+      const idSpan = document.getElementById('generatedId');
+
+      if (!file || !key) return alert("이미지와 암호키를 모두 입력하세요.");
+
+      const reader = new FileReader();
+      reader.onload = function (e) {
+        const base64 = e.target.result;
+        const ciphertext = CryptoJS.AES.encrypt(base64, key).toString();
+        const id = generateId();
+        localStorage.setItem(id, ciphertext);
+        idSpan.textContent = id;
+        idBox.style.display = 'block';
+      };
+      reader.readAsDataURL(file);
+    }
+
+    function copyId() {
+      const id = document.getElementById('generatedId').textContent;
+      navigator.clipboard.writeText(id).then(() => {
+        alert("📋 암호ID가 복사되었습니다.");
+      });
+    }
+
+    function decryptImage() {
+      const id = document.getElementById('idInput').value.trim();
+      const key = document.getElementById('decryptKey').value.trim();
+      const preview = document.getElementById('imagePreview');
+
+      if (!id || !key) return alert("ID와 암호키를 모두 입력하세요.");
+
+      const ciphertext = localStorage.getItem(id);
+      if (!ciphertext) return alert("유효하지 않은 ID입니다.");
+
+      try {
+        const bytes = CryptoJS.AES.decrypt(ciphertext, key);
+        const decrypted = bytes.toString(CryptoJS.enc.Utf8);
+
+        if (!decrypted.startsWith("data:image")) throw new Error();
+
+        const img = new Image();
+        img.src = decrypted;
+        preview.innerHTML = '';
+        preview.appendChild(img);
+
+        // 1회 열람 후 데이터 삭제
+        localStorage.removeItem(id);
+        document.getElementById('idInput').value = '';
+        document.getElementById('decryptKey').value = '';
+        alert("🔓 복호화 완료 (1회용). 다시 열람할 수 없습니다.");
+      } catch (err) {
+        alert("❌ 복호화 실패: 암호키가 틀리거나 잘못된 ID입니다.");
+      }
+    }
+  </script>
+</body>
+</html>

@@ -30,6 +30,7 @@
     img {
       margin-top: 20px;
       border: 1px solid #ccc;
+      max-width: 400px;
     }
   </style>
 </head>
@@ -48,82 +49,83 @@
   <input type="password" id="decryptPasswordInput" placeholder="암호 입력" value="3"><br>
   <button onclick="downloadAndDecryptImage()">복호화하여 보기</button>
 
-  <img id="outputImage" style="max-width:400px; display:none;"/>
+  <img id="outputImage" style="display:none;"/>
 
   <script>
-    const SUPABASE_URL = 'https://qlrqydpgdmnrneuopevp.supabase.co'
-    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFscnF5ZHBnZG1ucm5ldW9wZXZwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTgzNTg4NjcsImV4cCI6MjA3MzkzNDg2N30.jWEiAa36VZ0-3AHerq6qC2GxADJYAcZmuSpqFpf7TfA'
-    const BUCKET = 'encrypted-images'
-    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+    const SUPABASE_URL = "https://qlrqydpgdmnrneuopevp.supabase.co";
+    const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFscnF5ZHBnZG1ucm5ldW9wZXZwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTgzNTg4NjcsImV4cCI6MjA3MzkzNDg2N30.jWEiAa36VZ0-3AHerq6qC2GxADJYAcZmuSpqFpf7TfA";
+    const BUCKET = "encrypted-images";
+    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
     async function uploadEncryptedImage() {
-      const file = document.getElementById('fileInput').files[0]
-      const password = document.getElementById('passwordInput').value
-      if (!file || !password) return alert('파일과 암호를 모두 입력하세요.')
+      const file = document.getElementById("fileInput").files[0];
+      const password = document.getElementById("passwordInput").value;
+      if (!file || !password) return alert("파일과 암호를 모두 입력하세요.");
 
-      const arrayBuffer = await file.arrayBuffer()
-      const encrypted = await encryptFile(arrayBuffer, password)
+      const arrayBuffer = await file.arrayBuffer();
+      const encrypted = await encryptFile(arrayBuffer, password);
 
-      const fileId = crypto.randomUUID()
-      const { error } = await supabase.storage.from(BUCKET).upload(`${fileId}.bin`, encrypted)
+      const fileId = crypto.randomUUID();
+      const { error } = await supabase.storage.from(BUCKET).upload(`${fileId}.bin`, encrypted);
 
       if (error) {
-        alert('업로드 실패: ' + error.message)
+        alert("업로드 실패: " + error.message);
       } else {
-        const output = document.getElementById('fileIdOutput')
-        const button = document.getElementById('copyButton')
-        output.value = fileId
-        output.style.display = 'inline-block'
-        button.style.display = 'inline-block'
+        const output = document.getElementById("fileIdOutput");
+        const button = document.getElementById("copyButton");
+        output.value = fileId;
+        output.style.display = "inline-block";
+        button.style.display = "inline-block";
       }
     }
 
     async function downloadAndDecryptImage() {
-      const fileId = document.getElementById('fileIdInput').value
-      const password = document.getElementById('decryptPasswordInput').value
-      if (!fileId || !password) return alert('파일 ID와 암호를 입력하세요.')
+      const fileId = document.getElementById("fileIdInput").value;
+      const password = document.getElementById("decryptPasswordInput").value;
+      if (!fileId || !password) return alert("파일 ID와 암호를 입력하세요.");
 
-      const { data, error } = await supabase.storage.from(BUCKET).download(`${fileId}.bin`)
-      if (error || !data) return alert('다운로드 실패: ' + error?.message)
+      const { data, error } = await supabase.storage.from(BUCKET).download(`${fileId}.bin`);
+      if (error || !data) return alert("다운로드 실패: " + error?.message);
 
-      const encryptedBuffer = await data.arrayBuffer()
+      const encryptedBuffer = await data.arrayBuffer();
       try {
-        const decrypted = await decryptFile(encryptedBuffer, password)
-        const blob = new Blob([decrypted])
-        const url = URL.createObjectURL(blob)
-        const img = document.getElementById('outputImage')
-        img.src = url
-        img.style.display = 'block'
-        await supabase.storage.from(BUCKET).remove([`${fileId}.bin`])
+        const decrypted = await decryptFile(encryptedBuffer, password);
+        const blob = new Blob([decrypted]);
+        const url = URL.createObjectURL(blob);
+        const img = document.getElementById("outputImage");
+        img.src = url;
+        img.style.display = "block";
+        // 복호화 후 자동 삭제
+        await supabase.storage.from(BUCKET).remove([`${fileId}.bin`]);
       } catch (e) {
-        alert('❌ 복호화 실패: 암호가 틀렸거나 파일이 손상됨')
+        alert("❌ 복호화 실패: 암호가 틀렸거나 파일이 손상됨");
       }
     }
 
     async function encryptFile(data, password) {
-      const pwUtf8 = new TextEncoder().encode(password)
-      const pwHash = await crypto.subtle.digest('SHA-256', pwUtf8)
-      const iv = crypto.getRandomValues(new Uint8Array(12))
-      const key = await crypto.subtle.importKey('raw', pwHash, { name: 'AES-GCM' }, false, ['encrypt'])
-      const encrypted = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, data)
-      const result = new Uint8Array(iv.byteLength + encrypted.byteLength)
-      result.set(iv, 0)
-      result.set(new Uint8Array(encrypted), iv.byteLength)
-      return result
+      const pwUtf8 = new TextEncoder().encode(password);
+      const pwHash = await crypto.subtle.digest("SHA-256", pwUtf8);
+      const iv = crypto.getRandomValues(new Uint8Array(12));
+      const key = await crypto.subtle.importKey("raw", pwHash, { name: "AES-GCM" }, false, ["encrypt"]);
+      const encrypted = await crypto.subtle.encrypt({ name: "AES-GCM", iv }, key, data);
+      const result = new Uint8Array(iv.byteLength + encrypted.byteLength);
+      result.set(iv, 0);
+      result.set(new Uint8Array(encrypted), iv.byteLength);
+      return result;
     }
 
     async function decryptFile(encryptedData, password) {
-      const pwUtf8 = new TextEncoder().encode(password)
-      const pwHash = await crypto.subtle.digest('SHA-256', pwUtf8)
-      const iv = encryptedData.slice(0, 12)
-      const data = encryptedData.slice(12)
-      const key = await crypto.subtle.importKey('raw', pwHash, { name: 'AES-GCM' }, false, ['decrypt'])
-      return await crypto.subtle.decrypt({ name: 'AES-GCM', iv: new Uint8Array(iv) }, key, data)
+      const pwUtf8 = new TextEncoder().encode(password);
+      const pwHash = await crypto.subtle.digest("SHA-256", pwUtf8);
+      const iv = encryptedData.slice(0, 12);
+      const data = encryptedData.slice(12);
+      const key = await crypto.subtle.importKey("raw", pwHash, { name: "AES-GCM" }, false, ["decrypt"]);
+      return await crypto.subtle.decrypt({ name: "AES-GCM", iv: new Uint8Array(iv) }, key, data);
     }
 
     function copyFileId() {
-      const fileId = document.getElementById('fileIdOutput').value
-      navigator.clipboard.writeText(fileId)
+      const fileId = document.getElementById("fileIdOutput").value;
+      navigator.clipboard.writeText(fileId);
     }
   </script>
 </body>

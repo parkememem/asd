@@ -52,11 +52,13 @@
   <img id="outputImage" style="display:none;"/>
 
   <script>
+    // ✅ Supabase 설정
     const SUPABASE_URL = "https://qlrqydpgdmnrneuopevp.supabase.co";
     const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFscnF5ZHBnZG1ucm5ldW9wZXZwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTgzNTg4NjcsImV4cCI6MjA3MzkzNDg2N30.jWEiAa36VZ0-3AHerq6qC2GxADJYAcZmuSpqFpf7TfA";
-    const BUCKET = "Photo";
+    const BUCKET = "Photo"; // ✅ 실제 버킷 이름
     const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
+    // 암호화하여 업로드
     async function uploadEncryptedImage() {
       const file = document.getElementById("fileInput").files[0];
       const password = document.getElementById("passwordInput").value;
@@ -79,6 +81,7 @@
       }
     }
 
+    // 다운로드 + 복호화
     async function downloadAndDecryptImage() {
       const fileId = document.getElementById("fileIdInput").value;
       const password = document.getElementById("decryptPasswordInput").value;
@@ -95,6 +98,7 @@
         const img = document.getElementById("outputImage");
         img.src = url;
         img.style.display = "block";
+
         // 복호화 후 자동 삭제
         await supabase.storage.from(BUCKET).remove([`${fileId}.bin`]);
       } catch (e) {
@@ -102,6 +106,7 @@
       }
     }
 
+    // AES-GCM 암호화
     async function encryptFile(data, password) {
       const pwUtf8 = new TextEncoder().encode(password);
       const pwHash = await crypto.subtle.digest("SHA-256", pwUtf8);
@@ -114,6 +119,7 @@
       return result;
     }
 
+    // AES-GCM 복호화
     async function decryptFile(encryptedData, password) {
       const pwUtf8 = new TextEncoder().encode(password);
       const pwHash = await crypto.subtle.digest("SHA-256", pwUtf8);
@@ -123,6 +129,7 @@
       return await crypto.subtle.decrypt({ name: "AES-GCM", iv: new Uint8Array(iv) }, key, data);
     }
 
+    // 파일 ID 복사
     function copyFileId() {
       const fileId = document.getElementById("fileIdOutput").value;
       navigator.clipboard.writeText(fileId);
